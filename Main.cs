@@ -3,15 +3,12 @@ using FeederNetInspector.Classes;
 using FeederNetInspector.UI;
 using FeederNetInspector.Utils;
 using Fiddler;
-using Fiddler.WebFormats;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
-using static Fiddler.WebFormats.JSON;
 
 [assembly: RequiredVersion("5.0.0.0")]
 
@@ -117,78 +114,24 @@ namespace FeederNetInspector
             }
         }
 
-        /*private static void UpdateUi()
-        {
-            container.ToggleLabelLoading();
-            Tuple<string, string> captureOutputTuple = getCaptureOutputTuple(oSessions);
-            RequestSessionModel requestSessionModel = new RequestSessionModel();
-            ResponseSessionModel responseSessionModel = new ResponseSessionModel();
-            requestSessionModel.RequestBody = captureOutputTuple.Item1;
-            responseSessionModel.ResponseBody = captureOutputTuple.Item2;
-            container.SetTbRequests(requestSessionModel);
-            container.SetTbResponses(responseSessionModel);
-            container.ToggleLabelLoading();
-        }*/
-
         private static Tuple<List<Request>, List<Request>> getCaptureOutputTuple(Session[] oSessions)
         {
-            string requestOutput = "";
-            string responseOutput = "";
             List<Request> requestList = new List<Request>();
             foreach (Session oSession in oSessions)
             {
                 // Request
                 string requestHeaders = oSession.RequestHeaders.ToString();
                 string requestBody = oSession.GetRequestBodyAsString();
-                Request request = new Request(requestHeaders, requestBody);
+                List<PersonalInformation> personalInformationListInRequest = FindExposedPersonalInformation(oSession, oSession.GetRequestBodyAsString());
+                Request request = new Request(requestHeaders, requestBody, personalInformationListInRequest);
                 requestList.Add(request);
 
                 // Response
                 string responseHeaders = oSession.ResponseHeaders.ToString();
                 string responseBody = oSession.GetResponseBodyAsString();
-
-
-                /*ArrayList request = new ArrayList();
-                request.Add("<u><b>Request Header</b></u>");
-                request.Add(requestHeaders);
-                request.Add("<u><b>Request Body</b></u>");
-                request.Add(requestBody);
-
-                ArrayList response = new ArrayList();
-                response.Add("<u><b>Response Header</b></u>");
-                response.Add(responseHeaders);
-                response.Add("<u><b>Response Body</b></u>");
-                response.Add(responseBody);
-
-
-                requestOutput += "======= Session Object As String =======\n\n";
-                requestOutput += oSession.ToString();
-                requestOutput += "\n\n----- Host name -----\n\n";
-                requestOutput += oSession.hostname;
-                requestOutput += "\n\n----- Request Body As String -----\n\n";
-                string requestBodyAsString = oSession.GetRequestBodyAsString();
-                if (requestBodyAsString!="")
-                {
-                    JSONParseResult requestBodyAsJsonObj = (JSONParseResult)JSON.JsonDecode(requestBodyAsString);
-                    Hashtable requestBodayAsHashtable = (Hashtable)requestBodyAsJsonObj.JSONObject;
-                    if (requestBodayAsHashtable.ContainsKey("password"))
-                    {
-                        string password = (string)requestBodayAsHashtable["password"];
-                        bool isEncrypted = PasswordAdvisor.IsEncrypted(password);
-                    }
-                    requestOutput += requestBodyAsString;
-                }
+                List<PersonalInformation> personalInformationListInResponse = FindExposedPersonalInformation(oSession, oSession.GetResponseBodyAsString());
+                //IsPersonalInformationExposed(oSession, oSession.GetRequestBodyAsString());
                 
-                requestOutput += "\n\n\n=====================================\n\n\n";
-
-                // Response
-                responseOutput += "======= Session Object As String =======\n\n";
-                responseOutput += oSession.ToString();
-                responseOutput += "\n\n----- Host name -----\n\n";
-                responseOutput += oSession.hostname;
-                responseOutput += "\n\n----- Response Body As String -----\n\n";
-                responseOutput += oSession.GetResponseBodyAsString();
-                responseOutput += "\n\n========================================\n\n\n";*/
             }
 
             return new Tuple<List<Request>, List<Request>>(requestList, requestList);
@@ -226,34 +169,28 @@ namespace FeederNetInspector
             // end filter
         }
 
-        private static void IsPersonalInformationExposed(Session oSession, string bodyAsString)
+        private static List<PersonalInformation> FindExposedPersonalInformation(Session oSession, string bodyAsString)
         {
+            List<PersonalInformation> personalInformationList = new List<PersonalInformation>();
             // check if contains personal information P.I, highlight item if yes
             if (bodyAsString != "")
             {
-                try
+                MatchCollection mc = Regex.Matches(bodyAsString, "password\":\"([^\"]+)");
+                foreach (Match m in mc)
                 {
-                    JSONParseResult requestBodyAsJsonObj = (JSONParseResult)JSON.JsonDecode(bodyAsString);
-                    if (requestBodyAsJsonObj.JSONObject != null)
+                    Console.WriteLine(m);
+                    string passwordValue = m.Groups[1].Value;
+                    bool isEncrypted = PasswordAdvisor.IsEncrypted(passwordValue);
+                    // if not encrypted, password may be plain text so that we highlight the session
+                    if (!isEncrypted)
                     {
-                        Hashtable requestBodayAsHashtable = (Hashtable)requestBodyAsJsonObj.JSONObject;
-                        if (requestBodayAsHashtable.ContainsKey("password"))
-                        {
-                            string password = (string)requestBodayAsHashtable["password"];
-                            bool isEncrypted = PasswordAdvisor.IsEncrypted(password);
-                            // if not encrypted, password may be plain text so that we highlight the session
-                            if (!isEncrypted)
-                            {
-                                oSession.ViewItem.BackColor = Color.Yellow;
-                            }
-                        }
+                        PersonalInformation personalInformation = new PersonalInformation("password", passwordValue);
+                        personalInformationList.Add(personalInformation);
                     }
-                } catch (Exception)
-                {
-                    /* Failed type casting - do nothing */
                 }
-                
             }
+
+            return personalInformationList;
         }
 
         /// <summary>
@@ -299,8 +236,13 @@ namespace FeederNetInspector
                     if (sessionHostName.Contains(filterHostName))
                     {
                         oSession["ui-hide"] = null;
-                        IsPersonalInformationExposed(oSession, oSession.GetRequestBodyAsString());
-                        IsPersonalInformationExposed(oSession, oSession.GetResponseBodyAsString());
+                        List<PersonalInformation> personalInformationListInRequest = FindExposedPersonalInformation(oSession, oSession.GetRequestBodyAsString());
+                        List<PersonalInformation> personalInformationListInResponse = FindExposedPersonalInformation(oSession, oSession.GetResponseBodyAsString());
+                        bool isHighlight = personalInformationListInRequest.Count != 0 || personalInformationListInResponse.Count != 0;
+                        if (isHighlight)
+                        {
+                            oSession.ViewItem.BackColor = Color.Yellow;
+                        }
                     }
                 }
             }
@@ -315,61 +257,6 @@ namespace FeederNetInspector
             /*noop*/
         }
 
-        public static void CaptureAll()
-        {
-            try
-            {
-                SelectAllSessions();
-            }
-            catch (Exception e)
-            {
-                FiddlerApplication.Log.LogString(e.ToString());
-                MessageBox.Show(e.Message, "Errors");
-            }
-
-        }
-
-        public static void SelectAllSessions()
-        {
-            ListView.ListViewItemCollection lvItems = FiddlerApplication.UI.lvSessions.Items;
-            foreach (ListViewItem item in lvItems)
-            {
-                item.Selected = true;
-            }
-        }
-
-        public static void CaptureWithHostName(string hostName)
-        {
-            try
-            {
-                SelectAllSessionWithHostName(hostName);
-            }
-            catch (Exception e)
-            {
-                FiddlerApplication.Log.LogString(e.ToString());
-                MessageBox.Show(e.Message, "Errors");
-            }
-
-        }
-
-        public static void SelectAllSessionWithHostName(string hostName)
-        {
-            ListView.ListViewItemCollection lvItems = FiddlerApplication.UI.lvSessions.Items;
-            foreach (ListViewItem item in lvItems)
-            {
-                // 3 -> index of column host name
-                if (item.SubItems[3].Text.Contains(hostName))
-                {
-                    item.Selected = true;
-                    item.BackColor = Color.Yellow;
-                }
-                else
-                {
-                    item.BackColor = FiddlerApplication.UI.lvSessions.BackColor;
-                    item.Selected = false;
-                }
-            }
-        }
     }
 
 }

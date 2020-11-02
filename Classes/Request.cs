@@ -1,11 +1,14 @@
-﻿namespace FeederNetInspector.Classes
+﻿using System.Collections.Generic;
+
+namespace FeederNetInspector.Classes
 {
     public class Request
     {
-        public Request(string requestHeaders, string requestBody)
+        public Request(string requestHeaders, string requestBody, List<PersonalInformation> personalInformationList)
         {
             this.requestHeaders = requestHeaders;
             this.requestBody = requestBody;
+            this.personalInformationList = personalInformationList;
         }
 
         private string requestHeaders;
@@ -31,6 +34,21 @@
                 {
                     requestBody = value;
                 }
+            }
+        }
+
+        private List<PersonalInformation> personalInformationList = new List<PersonalInformation>();
+        public List<PersonalInformation> PersonalInformationList
+        {
+            get
+            {
+                if (personalInformationList == null) personalInformationList = new List<PersonalInformation>();
+                return personalInformationList;
+            }
+
+            set
+            {
+                personalInformationList = value;
             }
         }
     }

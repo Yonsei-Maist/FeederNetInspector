@@ -51,6 +51,7 @@
     <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\PersonalInformation.cs" />
     <Compile Include="Classes\Request.cs" />
     <Compile Include="Classes\Response.cs" />
     <Compile Include="Main.cs" />
