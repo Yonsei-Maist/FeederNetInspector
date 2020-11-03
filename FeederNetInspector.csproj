@@ -61,6 +61,7 @@
     <Compile Include="UI\Container.xaml.cs">
       <DependentUpon>Container.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Utils\JsonHelper.cs" />
     <Compile Include="Utils\TextExtensions.cs" />
     <Compile Include="Utils\PasswordAdvisor.cs" />
   </ItemGroup>

@@ -1,4 +1,9 @@
-﻿using System.Collections.Generic;
+﻿/**
+ * @file
+ * @author Vicheka Phor, Yonsei Univ. Researcher, since 2020.10
+ * @date 2020.11.02
+ */
+using System.Collections.Generic;
 
 namespace FeederNetInspector.Classes
 {

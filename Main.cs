@@ -1,4 +1,9 @@
-﻿using FeederNetInspcetor.Model;
+﻿/**
+ * @file
+ * @author Vicheka Phor, Yonsei Univ. Researcher, since 2020.10
+ * @date 2020.11.02
+ */
+using FeederNetInspcetor.Model;
 using FeederNetInspector.Classes;
 using FeederNetInspector.UI;
 using FeederNetInspector.Utils;
@@ -74,11 +79,11 @@ namespace FeederNetInspector
                 {
                     return;
                 }
-                Tuple<List<Request>, List<Request>> captureOutputTuple = getCaptureOutputTuple(oSessions);
+                Tuple<List<Request>, List<Response>> captureOutputTuple = GetRequestListResponseListAsTuple(oSessions);
                 RequestSessionModel requestSessionModel = new RequestSessionModel(captureOutputTuple.Item1);
-                //ResponseSessionModel responseSessionModel = new ResponseSessionModel(captureOutputTuple.Item2);
+                ResponseSessionModel responseSessionModel = new ResponseSessionModel(captureOutputTuple.Item2);
                 container.SetTbRequests(requestSessionModel);
-                //container.SetTbResponses(responseSessionModel);
+                container.SetTbResponses(responseSessionModel);
             }
             catch (Exception e)
             {
@@ -114,9 +119,15 @@ namespace FeederNetInspector
             }
         }
 
-        private static Tuple<List<Request>, List<Request>> getCaptureOutputTuple(Session[] oSessions)
+        /// <summary>
+        /// Get List<Request> and List</Response>
+        /// </summary>
+        /// <param name="oSessions"></param>
+        /// <returns>Tuple<List<Request>, List<Response>></returns>
+        private static Tuple<List<Request>, List<Response>> GetRequestListResponseListAsTuple(Session[] oSessions)
         {
             List<Request> requestList = new List<Request>();
+            List<Response> responseList = new List<Response>();
             foreach (Session oSession in oSessions)
             {
                 // Request
@@ -130,11 +141,12 @@ namespace FeederNetInspector
                 string responseHeaders = oSession.ResponseHeaders.ToString();
                 string responseBody = oSession.GetResponseBodyAsString();
                 List<PersonalInformation> personalInformationListInResponse = FindExposedPersonalInformation(oSession, oSession.GetResponseBodyAsString());
-                //IsPersonalInformationExposed(oSession, oSession.GetRequestBodyAsString());
-                
+                Response response = new Response(responseHeaders, responseBody, personalInformationListInResponse);
+                responseList.Add(response);
+
             }
 
-            return new Tuple<List<Request>, List<Request>>(requestList, requestList);
+            return new Tuple<List<Request>, List<Response>>(requestList, responseList);
         }
 
         /// <summary>
@@ -169,10 +181,16 @@ namespace FeederNetInspector
             // end filter
         }
 
+        /// <summary>
+        /// Find any exposed personal information
+        /// </summary>
+        /// <param name="oSession"></param>
+        /// <param name="bodyAsString"></param>
+        /// <returns>List<PersonalInformation> List of PersonalInformation</returns>
         private static List<PersonalInformation> FindExposedPersonalInformation(Session oSession, string bodyAsString)
         {
             List<PersonalInformation> personalInformationList = new List<PersonalInformation>();
-            // check if contains personal information P.I, highlight item if yes
+            // check if contains personal information P.I
             if (bodyAsString != "")
             {
                 MatchCollection mc = Regex.Matches(bodyAsString, "password\":\"([^\"]+)");
@@ -236,9 +254,10 @@ namespace FeederNetInspector
                     if (sessionHostName.Contains(filterHostName))
                     {
                         oSession["ui-hide"] = null;
-                        List<PersonalInformation> personalInformationListInRequest = FindExposedPersonalInformation(oSession, oSession.GetRequestBodyAsString());
+                        //List<PersonalInformation> personalInformationListInRequest = FindExposedPersonalInformation(oSession, oSession.GetRequestBodyAsString());
                         List<PersonalInformation> personalInformationListInResponse = FindExposedPersonalInformation(oSession, oSession.GetResponseBodyAsString());
-                        bool isHighlight = personalInformationListInRequest.Count != 0 || personalInformationListInResponse.Count != 0;
+                        //bool isHighlight = personalInformationListInRequest.Count != 0 || personalInformationListInResponse.Count != 0;
+                        bool isHighlight = personalInformationListInResponse.Count != 0;
                         if (isHighlight)
                         {
                             oSession.ViewItem.BackColor = Color.Yellow;

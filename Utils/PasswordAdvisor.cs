@@ -1,4 +1,9 @@
-﻿using System.Text.RegularExpressions;
+﻿/**
+ * @file
+ * @author Vicheka Phor, Yonsei Univ. Researcher, since 2020.10
+ * @date 2020.11.02
+ */
+using System.Text.RegularExpressions;
 
 namespace FeederNetInspector.Utils
 {
